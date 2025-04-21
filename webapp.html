@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chicken Farm Runner</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #b8e0d2;
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+      background: #87c38f;
+      border-bottom: 5px solid #5c8d89;
+    }
+
+    #game-over, #loading {
+      position: absolute;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 2rem;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    #game-over {
+      display: none;
+    }
+
+    #score {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      background: rgba(255, 255, 255, 0.8);
+      padding: 6px 12px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas" width="800" height="300"></canvas>
+  <div id="score">Score: 0 | Record: 0</div>
+  <div id="loading">Loading...</div>
+  <div id="game-over">
+    <p>Game Over!</p>
+    <button onclick="restartGame()">Restart</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const scoreDisplay = document.getElementById("score");
+    const ground = 260;
+
+    const chickenImg = new Image();
+    const hayImg = new Image();
+
+    chickenImg.src = "assets/img/chatChicken1.png";
+    hayImg.src = "assets/img/chatHay1.png";
+
+    const chicken = {
+      x: 50,
+      y: ground,
+      width: 40,
+      height: 40,
+      velocityY: 0,
+      gravity: 1.2,
+      jumpPower: -15,
+      isJumping: false,
+    };
+
+    let obstacles = [];
+    let frame = 0;
+    let gameSpeed = 6;
+    let isGameOver = false;
+    let score = 0;
+    let record = 0;
+    let recordBroken = false;
+
+    function drawChicken() {
+      ctx.drawImage(chickenImg, chicken.x, chicken.y, chicken.width, chicken.height);
+    }
+
+    function drawObstacle(obstacle) {
+      ctx.drawImage(hayImg, obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+    }
+
+    function createObstacle() {
+      const obstacle = {
+        x: canvas.width,
+        y: ground,
+        width: 35,
+        height: 35,
+      };
+      obstacles.push(obstacle);
+    }
+
+    function updateObstacles() {
+      for (let i = 0; i < obstacles.length; i++) {
+        const obs = obstacles[i];
+        obs.x -= gameSpeed;
+        drawObstacle(obs);
+
+        if (
+          chicken.x < obs.x + obs.width &&
+          chicken.x + chicken.width > obs.x &&
+          chicken.y + chicken.height > obs.y
+        ) {
+          endGame();
+        }
+      }
+
+      obstacles = obstacles.filter(obs => obs.x + obs.width > 0);
+    }
+
+    function updateChicken() {
+      chicken.velocityY += chicken.gravity;
+      chicken.y += chicken.velocityY;
+
+      if (chicken.y > ground) {
+        chicken.y = ground;
+        chicken.velocityY = 0;
+        chicken.isJumping = false;
+      }
+
+      drawChicken();
+    }
+
+    function jump() {
+      if (!chicken.isJumping) {
+        chicken.velocityY = chicken.jumpPower;
+        chicken.isJumping = true;
+      }
+    }
+
+    function endGame() {
+      isGameOver = true;
+      document.getElementById("game-over").style.display = "block";
+    }
+
+    function restartGame() {
+      chicken.y = ground;
+      chicken.velocityY = 0;
+      chicken.isJumping = false;
+      obstacles = [];
+      frame = 0;
+      score = 0;
+      recordBroken = false;
+      isGameOver = false;
+      document.getElementById("game-over").style.display = "none";
+      loop();
+    }
+
+    function updateScoreDisplay() {
+      scoreDisplay.innerText = `Score: ${score} | Record: ${record}`;
+    }
+
+    function loop() {
+      if (isGameOver) return;
+
+      // Background changes when record is broken
+      if (recordBroken) {
+        ctx.fillStyle = "#ffd966"; // goldish
+      } else {
+        ctx.fillStyle = "#87c38f"; // normal green
+      }
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      updateChicken();
+
+      if (frame % 100 === 0) {
+        createObstacle();
+      }
+
+      updateObstacles();
+
+      score++;
+      if (score > record) {
+        record = score;
+        recordBroken = true;
+      }
+
+      updateScoreDisplay();
+      frame++;
+      requestAnimationFrame(loop);
+    }
+
+    let loadedAssets = 0;
+    const totalAssets = 2;
+
+    function assetLoaded() {
+      loadedAssets++;
+      if (loadedAssets === totalAssets) {
+        document.getElementById("loading").style.display = "none";
+        loop();
+      }
+    }
+
+    chickenImg.onload = assetLoaded;
+    hayImg.onload = assetLoaded;
+
+    document.addEventListener("keydown", (e) => {
+      if (e.code === "Space") {
+        jump();
+      }
+    });
+  </script>
+</body>
+</html>
